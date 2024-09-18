@@ -93,11 +93,15 @@ const forgetPassword = async (req, res) => {
 }
 
 const getUserData = async function (req, res) {
-    const getUserData = await user.find().select('-password -role -status -createdAt -updatedAt')
-    if (getUserData) {
-        return res.send({ status: 1, msg: "data fetch successfully", data: getUserData })
-    } else {
-        return res.send({ status: 0, msg: "data not found", data: [] })
+    try {
+        const getUserData = await user.find().select('-password -role -status -createdAt -updatedAt')
+        if (getUserData) {
+            return res.send({ status: 1, msg: "data fetch successfully", data: getUserData })
+        } else {
+            return res.send({ status: 0, msg: "data not found", data: [] })
+        }
+    } catch (error) {
+        return res.send({ status: 0, msg: error.message })
     }
 }
 
@@ -111,6 +115,7 @@ const getUserDataById = async function (req, res) {
             return res.send({ status: 0, msg: "data not found", data: [] })
         }
     } catch (error) {
+        return res.send({ status: 0, msg: error.message })
     }
 }
 
