@@ -18,14 +18,14 @@ const userRegistration = async function (req, res) {
             return res.send({ status: 0, msg: "something went wrong" })
         }
     } catch (error) {
-        return res.send({ status: 0, msg:error.message })
+        return res.send({ status: 0, msg: error.message })
     }
 }
 
 const userLogin = async (req, res) => {
     const { email, password } = req.body
     try {
-        const checkEmail = await user.findOne({email})
+        const checkEmail = await user.findOne({ email })
         if (!checkEmail) {
             return res.send({ status: 0, msg: "you are not registered" })
         }
@@ -62,7 +62,7 @@ const userLogin = async (req, res) => {
             });
         });
     } catch (error) {
-        return res.send({ status: 0, msg:error.message })
+        return res.send({ status: 0, msg: error.message })
     }
 }
 
@@ -88,7 +88,7 @@ const forgetPassword = async (req, res) => {
         await checkUserExist.save();
         return res.send({ status: 1, msg: "Password reset successfully" });
     } catch (error) {
-        return res.send({ status: 0, msg:error.message })
+        return res.send({ status: 0, msg: error.message })
     }
 }
 
@@ -122,20 +122,20 @@ const updateUserData = async function (req, res) {
             return res.send({ status: 0, msg: "User not found" });
         }
 
-        if(userExist.status === 0) {
+        if (userExist.status === 0) {
             return res.send({ status: 0, msg: "something went wrong" });
         }
 
         const updateUser = await user.findByIdAndUpdate(
             userId,
             updateData,
-            {new: true}
+            { new: true }
         )
         if (updateUser.matchedCount !== 0, updateUser.modifiedData !== 0) {
             return res.send({ status: 1, msg: "data succesfully updated" })
         }
     } catch (error) {
-        return res.send({ status: 0, msg:error.message })
+        return res.send({ status: 0, msg: error.message })
     }
 }
 
@@ -146,8 +146,8 @@ const deleteUserDetails = async (req, res) => {
         if (!checkUserExist) {
             return res.send({ status: 0, msg: "user not found" })
         }
-        if(checkUserExist.status==0){
-            return res.send({status:0,msg:"data already deleted"})
+        if (checkUserExist.status == 0) {
+            return res.send({ status: 0, msg: "data already deleted" })
         }
         const deleteUserDetails = await user.findByIdAndUpdate({ _id: deleteUsers.userId },
             { $set: { status: 0 } }

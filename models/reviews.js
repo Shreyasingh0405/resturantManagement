@@ -21,18 +21,18 @@ const reviewSchema = new mongoose.Schema({
     },
     comment: {
         type: String,
-        required: true  
+        required: true
     },
     response: {
-        type: String,  
+        type: String,
         default: null
     },
-    status:{
-        type:Number,
-        enum:[0,1,2],
-        default:1        //0:delete,1:active,2:inactive
-     }
-    },
-{timestamps:true,versionKey:false});
+    status: {
+        type: Number,
+        enum: [0, 1, 2],
+        default: 1        //0:delete,1:active,2:inactive
+    }
+},
+    { timestamps: true, versionKey: false });
 
 export default mongoose.model('Review', reviewSchema);
