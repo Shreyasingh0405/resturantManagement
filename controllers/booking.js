@@ -52,6 +52,7 @@ const getBookingDataById = async (req, res) => {
             return res.send({ status: 0, msg: "data not found", data: [] })
         }
     } catch (error) {
+        return res.send({ status: 0, msg: error.message })
     }
 }
 
