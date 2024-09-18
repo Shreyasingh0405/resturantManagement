@@ -93,7 +93,7 @@ const forgetPassword = async (req, res) => {
 }
 
 const getUserData = async function (req, res) {
-    const getUserData = await user.find()
+    const getUserData = await user.find().select('-password -role -status -createdAt -updatedAt')
     if (getUserData) {
         return res.send({ status: 1, msg: "data fetch successfully", data: getUserData })
     } else {
@@ -104,7 +104,7 @@ const getUserData = async function (req, res) {
 const getUserDataById = async function (req, res) {
     const getUserById = req.body
     try {
-        const getUser = await user.findById({ _id: getUserById.userId })
+        const getUser = await user.findById({ _id: getUserById.userId }).select('-password -role -status -createdAt -updatedAt')
         if (getUser) {
             return res.send({ status: 1, msg: "data get successfully", data: getUser })
         } else {

@@ -16,10 +16,10 @@ const resturantSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    // image: {
-    //     type: Array,
-    //     trim: true
-    // },
+    image: {
+        type: Array,
+        trim: true
+    },
     menu: {
         veg: [
             {

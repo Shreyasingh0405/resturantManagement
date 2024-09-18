@@ -29,7 +29,7 @@ const userSchema =  new mongoose.Schema({
      role:{
         type:Number,
         enum:[1,2,3],
-        default:1           //1.Users,2.admin,3.businessOwner
+        default:1           //1.Users,2.businessOwner,3.admin
      },
      status:{
         type:Number,
