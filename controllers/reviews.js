@@ -4,21 +4,21 @@ import users from "../models/user.js"
 const reviewData = async (req, res) => {
     const reviewsData = req.body
     try {
-        const checkUserExist = await users.findOne({_id:reviewsData.userId})
-        if(!checkUserExist){
-            return res.send({status:0,msg:"Invalid Id"})
+        const checkUserExist = await users.findOne({ _id: reviewsData.userId })
+        if (!checkUserExist) {
+            return res.send({ status: 0, msg: "Invalid Id" })
         }
-        if(checkUserExist.status==0){
-            return res.send({status:0,msg:"something went wrong"})
+        if (checkUserExist.status == 0) {
+            return res.send({ status: 0, msg: "something went wrong" })
         }
-        const checkResturantExist = await resturantSchema.findOne({_id:reviewsData.resturantId})
-        if(!checkResturantExist){
-            return res.send({status:0,msg:"Invalid Id"})
-  }
-  if(checkResturantExist.status==0){
-    return res.send({status:0,msg:"something went wrong"})
-}
- const reviewData = await reviews.create(reviewsData)
+        const checkResturantExist = await resturantSchema.findOne({ _id: reviewsData.resturantId })
+        if (!checkResturantExist) {
+            return res.send({ status: 0, msg: "Invalid Id" })
+        }
+        if (checkResturantExist.status == 0) {
+            return res.send({ status: 0, msg: "something went wrong" })
+        }
+        const reviewData = await reviews.create(reviewsData)
         if (reviewData) {
             return res.send({ status: 1, msg: "review data inserted successfully" })
         } else {

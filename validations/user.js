@@ -72,7 +72,7 @@ const forgetPasswordValidation = [
     check("confirmPassword")
         .notEmpty().withMessage("confirmPassword is required")
         .isStrongPassword().withMessage("password must be strong with one uppercase,one numeric and one special charcter"),
- (req, res, next) => {
+    (req, res, next) => {
         const errors = validationResult(req).array();
         if (errors.length > 0) {
             return res.send({ status: 0, message: errors[0].msg });

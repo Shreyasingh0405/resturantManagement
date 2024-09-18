@@ -1,5 +1,5 @@
 import mongoose from "mongoose"
-const objectId=mongoose.Schema.Types.ObjectId
+const objectId = mongoose.Schema.Types.ObjectId
 const resturantSchema = new mongoose.Schema({
     resturantName: {
         type: String,
@@ -70,11 +70,11 @@ const resturantSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    status:{
-        type:Number,
-        enum:[0,1,2],
-        default:1        //0:delete,1:active,2:inactive
-     }
+    status: {
+        type: Number,
+        enum: [0, 1, 2],
+        default: 1        //0:delete,1:active,2:inactive
+    }
 },
     { timestamps: true, versionKey: false })
 export default mongoose.model("resturant", resturantSchema)

@@ -19,6 +19,6 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // Middleware to handle file upload
-const uploadImage = upload.array('image',5); // Handle single file upload with the field name 'image'
+const uploadImage = upload.array('image', 5); // Handle single file upload with the field name 'image'
 
-export {uploadImage} ;
+export { uploadImage };
