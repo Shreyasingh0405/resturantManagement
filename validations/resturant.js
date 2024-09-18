@@ -22,8 +22,7 @@ const restaurantValidation = [
         .notEmpty().withMessage("Zip code is required")
         .isPostalCode('IN').withMessage("Invalid zip code format"),
     check("contactInfo.phone")
-        .notEmpty().withMessage("Phone number is required")
-        .isMobilePhone('en-IN').withMessage("Invalid phone number format"),
+        .notEmpty().withMessage("Phone number is required"),
     check("contactInfo.email")
         .notEmpty().withMessage("Email is required")
         .isEmail().withMessage("Invalid email format"),
@@ -70,7 +69,7 @@ const restaurantValidation = [
 
 const resturantIdValidation = [
     check("resturantId")
-        .isMongoId().withMessage("Invalid booking ID")
+        .isMongoId().withMessage("Invalid resturant ID")
         .notEmpty().withMessage("resturantId is required"),
     (req, res, next) => {
         const errors = validationResult(req).array();

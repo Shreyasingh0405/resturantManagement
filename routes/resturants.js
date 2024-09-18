@@ -1,4 +1,7 @@
 export default async (app) => {
+const { authorized } = await import("../utils/auth.js")
+const {checkAccess}= await import ("../utils/checkAccess.js")
+const {uploadImage} =await import ("../utils/multer.js");
 
     //================== controller ==========================================//
     const {
@@ -16,9 +19,9 @@ export default async (app) => {
     } = await import("../validations/resturant.js")
     //=================API================================================//
 
-    app.post("/resturantRegistration", restaurantValidation, resturantRegistration)
+    app.post("/resturantRegistration",authorized,checkAccess([2, 3]),uploadImage,restaurantValidation, resturantRegistration)
     app.get("/getResturantData", getResturantData)
     app.post("/getResturantDataById", resturantIdValidation, getResturantDataById)
-    app.post("/updateResturantData", resturantIdValidation, updateResturantData)
-    app.post("/deleteResturantDetails", resturantIdValidation, deleteResturantDetails)
+    app.post("/updateResturantData",authorized,checkAccess([2, 3]), resturantIdValidation, updateResturantData)
+    app.post("/deleteResturantDetails",authorized,checkAccess([3]), resturantIdValidation, deleteResturantDetails)
 }

@@ -30,8 +30,8 @@ const reviewValidation = [
     }
 ];
 const reviewIdValidation = [
-    check("reviewId")
-        .isMongoId().withMessage("Invalid booking ID")
+    check("reviewsId")
+        .isMongoId().withMessage("Invalid reviews ID")
         .notEmpty().withMessage("reviewId is required"),
     (req, res, next) => {
         const errors = validationResult(req).array();

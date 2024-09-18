@@ -1,4 +1,5 @@
 export default async (app) => {
+const { authorized } = await import("../utils/auth.js")
 
     //================== controller ==========================================//
     const {
@@ -16,9 +17,9 @@ export default async (app) => {
     } = await import("../validations/booking.js")
     //=================API================================================//
 
-    app.post("/bookingData",bookingValidation, bookingData)
+    app.post("/bookingData",authorized,bookingValidation, bookingData)
     app.get("/getBookingData", getBookingData)
-    app.post("/getBookingDataById",bookingIdValidation, getBookingDataById)
-    app.post("/updateBookingData",bookingIdValidation, updateBookingData)
-    app.post("/deleteBookingDetails",bookingIdValidation, deleteBookingDetails)
+    app.post("/getBookingDataById",authorized,bookingIdValidation, getBookingDataById)
+    app.post("/updateBookingData",authorized,bookingIdValidation, updateBookingData)
+    app.post("/deleteBookingDetails",authorized,bookingIdValidation, deleteBookingDetails)
 }

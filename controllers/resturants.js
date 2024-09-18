@@ -2,6 +2,11 @@ import resturant from "../models/resturants.js"
 const resturantRegistration = async (req, res) => {
     const resturantData = req.body
     try {
+        const files = req.files; // Multer adds uploaded files to `req.files`
+        if (files && files.length > 0) {
+            resturantData.image = files.map(file => file.path); // Store the paths of all uploaded images
+        }
+
         const resturantDataRegister = await resturant.create(resturantData)
         if (resturantDataRegister) {
             return res.send({ status: 1, msg: "resturant data inserted successfully" })
