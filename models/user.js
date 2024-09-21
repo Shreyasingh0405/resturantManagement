@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema({
       required: true,
       trim: true
    },
-   mobile: {
+   mobileNo: {
       type: String,
       required: true,
       trim: true
@@ -21,7 +21,12 @@ const userSchema = new mongoose.Schema({
       trim: true,
       lowercase: true
    },
-   password: {
+   // password: {
+   //    type: String,
+   //    required: true,
+   //    trim: true
+   // },
+   loginPin: {
       type: String,
       required: true,
       trim: true
@@ -30,6 +35,26 @@ const userSchema = new mongoose.Schema({
       type: Number,
       enum: [1, 2, 3],
       default: 1           //1.Users,2.businessOwner,3.admin
+   },
+   isEmailVerified: {
+      type: Number,
+      enum: [0, 1],    //0.no,1.yes
+      default: 0
+   },
+   verificationToken: {
+      type: String,
+      trim: true
+   },
+   otpExpiration: {
+      type: Date,
+   },
+   otp: {
+      type: String,
+   },
+   isOtpVerified: {
+      type: Number,
+      enum: [0, 1],    //0.no,1.yes
+      default: 0
    },
    status: {
       type: Number,

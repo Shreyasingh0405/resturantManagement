@@ -2,17 +2,35 @@ import user from "../models/user.js"
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
 import CONFIG from "../config/config.js"
+import sendEmail from "../utils/nodemailer.js"
+import common from "../utils/common.js";
 
 const userRegistration = async function (req, res) {
     const registeredData = req.body
     try {
+        const mobile = await user.findOne({ mobile: registeredData.mobile })
+        if (mobile) {
+            return res.send({ status: 0, msg: "mobile already exist" })
+        }
         const checkEmail = await user.findOne({ email: registeredData.email })
         if (checkEmail) {
             return res.send({ status: 0, msg: "email already exist" })
         }
-        registeredData.password = bcrypt.hashSync(registeredData.password, 10)
+        if (registeredData.loginPin !== registeredData.confirmLoginPin) {
+            return res.send({ status: 0, msg: "pin and confirm loginPin should be same" })
+        }
+        registeredData.loginPin = bcrypt.hashSync(registeredData.loginPin, 10)
+        const verificationToken = common.generateUniqueToken();
+        registeredData.verificationToken = verificationToken;
         const registeredUser = await user.create(registeredData)
         if (registeredUser) {
+            const mailOptions = {
+                from: CONFIG.SMTP_USER,
+                to: registeredData.email,
+                subject: 'Email Verification',
+                text: `Please verify your email by clicking on this link: /verify-email?token=${verificationToken}`
+            };
+            await sendEmail(mailOptions);
             return res.send({ status: 1, msg: "data registered succesfully" })
         } else {
             return res.send({ status: 0, msg: "something went wrong" })
@@ -22,71 +40,211 @@ const userRegistration = async function (req, res) {
     }
 }
 
-const userLogin = async (req, res) => {
-    const { email, password } = req.body
+const verifyEmail = async (req, res) => {
+    const { token } = req.query;
     try {
-        const checkEmail = await user.findOne({ email })
-        if (!checkEmail) {
-            return res.send({ status: 0, msg: "you are not registered" })
+        const userToVerify = await user.findOne({ verificationToken: token });
+        if (!userToVerify) {
+            return res.send({ status: 0, msg: "Invalid token or user not found" });
         }
-        if (checkEmail.status === 0) {
-            return res.send({ status: 0, msg: "something went wrong" });
+        await user.updateOne(
+            { _id: userToVerify._id },
+            {
+                $set: { isEmailVerified: 1 }, // Set email as verified
+                $unset: { verificationToken: 1 } // Remove the verificationToken field
+            }
+        );
+
+        return res.send({ status: 1, msg: "Email verified successfully!" });
+    } catch (error) {
+        return res.send({ status: 0, msg: error.message });
+    }
+};
+
+const userLogin = async (req, res) => {
+    const { email, loginPin, mobile } = req.body;
+
+    try {
+        const userQuery = email ? { email } : { mobile };
+        const userData = await user.findOne(userQuery);
+
+        if (!userData) {
+            return res.send({ status: 0, msg: "You are not registered" });
         }
-        bcrypt.compare(password, checkEmail.password, function (err, result) {
+
+        // Check if the account is active
+        if (userData.status === 0) {
+            return res.send({ status: 0, msg: "Something went wrong" });
+        }
+
+        // Ensure the email is verified (if logging in by email)
+        if (email && userData.isEmailVerified === 0) {
+            return res.send({ status: 0, msg: "Please verify your email for login" });
+        }
+
+        // Compare login pin
+        bcrypt.compare(loginPin, userData.loginPin, function (err, result) {
             if (result === true) {
                 const token = jwt.sign(
                     {
-                        userId: checkEmail._id,
-                        email: checkEmail.email,
-                        role: checkEmail.role,
+                        userId: userData._id,
+                        email: userData.email,
+                        role: userData.role,
                     },
                     CONFIG.JWT_KEY,
                     { algorithm: "RS256", expiresIn: "1d" }
                 );
+
                 if (token) {
                     return res.send({
                         status: 1,
-                        msg: "login succesfully",
+                        msg: "Login successfully",
                         data: token,
                     });
                 }
             } else if (err) {
                 return res.send({
                     status: 0,
-                    msg: "User name or Password is Invalid",
+                    msg: "Invalid username or password",
                 });
             }
+
             return res.send({
                 status: 0,
-                msg: "User name or Password is Invalid",
+                msg: "Invalid username or password",
             });
         });
     } catch (error) {
-        return res.send({ status: 0, msg: error.message })
+        return res.send({ status: 0, msg: error.message });
     }
-}
+};
 
-const forgetPassword = async (req, res) => {
-    const { email, password, confirmPassword, userId } = req.body
+
+// const forgetPassword = async (req, res) => {
+//     const { email, password, confirmPassword, userId } = req.body
+//     try {
+//         const checkEmail = await user.findOne(email)
+//         if (!checkEmail) {
+//             return res.send({ status: 0, msg: "you are not registered" })
+//         }
+//         if (checkEmail.status === 0) {
+//             return res.send({ status: 0, msg: "something went wrong" });
+//         }
+//         if (password !== confirmPassword) {
+//             return res.send({ status: 0, msg: "password and confirmPassword should be same" })
+//         }
+//         const checkUserExist = await user.findById(userId)
+//         if (!checkUserExist) {
+//             return res.send({ status: 0, msg: "user not found" })
+//         }
+//         const hashedPassword = await bcrypt.hash(password, 10)
+//         checkUserExist.password = hashedPassword;
+//         await checkUserExist.save();
+//         return res.send({ status: 1, msg: "Password reset successfully" });
+//     } catch (error) {
+//         return res.send({ status: 0, msg: error.message })
+//     }
+// }
+
+const sentOtp = async (req, res) => {
     try {
-        const checkEmail = await user.findOne(email)
-        if (!checkEmail) {
-            return res.send({ status: 0, msg: "you are not registered" })
+        const { email } = req.body;
+        const userData = await user.findOne({ email });
+        if (!userData) {
+            return res.send({ status: 0, msg: "User not found" });
         }
-        if (checkEmail.status === 0) {
-            return res.send({ status: 0, msg: "something went wrong" });
+        const otp = common.otpGenerate();
+        const expirationTime = new Date(Date.now() + 10 * 60 * 1000);
+        const otpSent = await user.findOneAndUpdate(
+            { email },
+            { otp, otpExpiration: expirationTime }
+        );
+        if (otpSent) {
+            const mailOptions = {
+                from: CONFIG.SMTP_USER,
+                to: email,
+                subject: "OTP Sent",
+                text: "otp sent ",
+            };
+            await sendEmail(mailOptions);
+            return res.send({
+                status: 1,
+                message: "OTP sent to email successfully",
+            });
+        } else {
+            return res.send({
+                status: 0,
+                message: "Failed to process request",
+            });
         }
-        if (password !== confirmPassword) {
-            return res.send({ status: 0, msg: "password and confirmPassword should be same" })
+    } catch (error) {
+        return res.send({ status: 0, message: error.message });
+    }
+};
+
+const verifyOTP = async (req, res) => {
+    try {
+        const { otp, userId } = req.body;
+        const otpVerification = await user.findOne({
+            _id: userId,
+            otp: otp,
+        });
+        if (otpVerification && otpVerification.otp === otp) {
+            const currentTime = new Date();
+            if (currentTime >= otpVerification.otpExpiration) {
+                return res.send({ status: 0, msg: "OTP timeout" });
+            }
+            const updateResult = await user.updateOne(
+                { _id: userId },
+                {
+                    $set: { isOtpVerified: 1 },
+                    $unset: { otp: "", otpExpiration: "" }
+                }
+            );
+            if (updateResult.modifiedCount > 0) {
+                const mailOptions = {
+                    from: CONFIG.SMTP_USER,
+                    to: otpVerification.email,
+                    subject: "OTP Verification",
+                    text: "verifyotp",
+                };
+                await sendEmail(mailOptions);
+                return res.send({
+                    status: 1,
+                    msg: "OTP verified successfully",
+                });
+            } else {
+                return res.send({ status: 0, msg: "Failed to remove OTP data" });
+            }
+        } else {
+            return res.send({ status: 0, msg: "Invalid OTP" });
         }
+    } catch (error) {
+        return res.send({ status: 0, msg: error.message });
+    }
+};
+const changePinOrMobile = async (req, res) => {
+    const { loginPin, confirmLoginPin, newMobileNo, userId } = req.body
+    try {
         const checkUserExist = await user.findById(userId)
         if (!checkUserExist) {
-            return res.send({ status: 0, msg: "user not found" })
+            return res.send({ status: 0, msg: "user Not found" })
         }
-        const hashedPassword = await bcrypt.hash(password, 10)
-        checkUserExist.password = hashedPassword;
+        if (checkUserExist.isOtpVerified === 0) {
+            return res.send({ status: 0, msg: "verify otp for change pin" })
+        }
+        if (loginPin !== confirmLoginPin) {
+            return res.send({ status: 0, msg: "pin and confirm loginPin should be same" })
+        }
+        const hashedLoginPin = await bcrypt.hash(loginPin, 10)
+        checkUserExist.loginPin = hashedLoginPin;
+        if (newMobileNo) {
+            checkUserExist.mobileNo = newMobileNo
+        }
+        delete checkUserExist.isOtpVerified;
         await checkUserExist.save();
-        return res.send({ status: 1, msg: "Password reset successfully" });
+        return res.send({ status: 1, msg: "loginPin reset successfully" });
+
     } catch (error) {
         return res.send({ status: 0, msg: error.message })
     }
@@ -168,10 +326,14 @@ const deleteUserDetails = async (req, res) => {
 }
 export {
     userRegistration,
+    verifyEmail,
+    sentOtp,
+    verifyOTP,
     getUserData,
     getUserDataById,
     userLogin,
+    changePinOrMobile,
     updateUserData,
-    forgetPassword,
+    //forgetPassword,
     deleteUserDetails
 }
