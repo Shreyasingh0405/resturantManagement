@@ -120,31 +120,31 @@ const userLogin = async (req, res) => {
 };
 
 
-// const forgetPassword = async (req, res) => {
-//     const { email, password, confirmPassword, userId } = req.body
-//     try {
-//         const checkEmail = await user.findOne(email)
-//         if (!checkEmail) {
-//             return res.send({ status: 0, msg: "you are not registered" })
-//         }
-//         if (checkEmail.status === 0) {
-//             return res.send({ status: 0, msg: "something went wrong" });
-//         }
-//         if (password !== confirmPassword) {
-//             return res.send({ status: 0, msg: "password and confirmPassword should be same" })
-//         }
-//         const checkUserExist = await user.findById(userId)
-//         if (!checkUserExist) {
-//             return res.send({ status: 0, msg: "user not found" })
-//         }
-//         const hashedPassword = await bcrypt.hash(password, 10)
-//         checkUserExist.password = hashedPassword;
-//         await checkUserExist.save();
-//         return res.send({ status: 1, msg: "Password reset successfully" });
-//     } catch (error) {
-//         return res.send({ status: 0, msg: error.message })
-//     }
-// }
+const forgetPassword = async (req, res) => {
+    const { email, password, confirmPassword, userId } = req.body
+    try {
+        const checkEmail = await user.findOne(email)
+        if (!checkEmail) {
+            return res.send({ status: 0, msg: "you are not registered" })
+        }
+        if (checkEmail.status === 0) {
+            return res.send({ status: 0, msg: "something went wrong" });
+        }
+        if (password !== confirmPassword) {
+            return res.send({ status: 0, msg: "password and confirmPassword should be same" })
+        }
+        const checkUserExist = await user.findById(userId)
+        if (!checkUserExist) {
+            return res.send({ status: 0, msg: "user not found" })
+        }
+        const hashedPassword = await bcrypt.hash(password, 10)
+        checkUserExist.password = hashedPassword;
+        await checkUserExist.save();
+        return res.send({ status: 1, msg: "Password reset successfully" });
+    } catch (error) {
+        return res.send({ status: 0, msg: error.message })
+    }
+}
 
 const sentOtp = async (req, res) => {
     try {
@@ -224,31 +224,52 @@ const verifyOTP = async (req, res) => {
     }
 };
 const changePinOrMobile = async (req, res) => {
-    const { loginPin, confirmLoginPin, newMobileNo, userId } = req.body
-    try {
-        const checkUserExist = await user.findById(userId)
-        if (!checkUserExist) {
-            return res.send({ status: 0, msg: "user Not found" })
-        }
-        if (checkUserExist.isOtpVerified === 0) {
-            return res.send({ status: 0, msg: "verify otp for change pin" })
-        }
-        if (loginPin !== confirmLoginPin) {
-            return res.send({ status: 0, msg: "pin and confirm loginPin should be same" })
-        }
-        const hashedLoginPin = await bcrypt.hash(loginPin, 10)
-        checkUserExist.loginPin = hashedLoginPin;
-        if (newMobileNo) {
-            checkUserExist.mobileNo = newMobileNo
-        }
-        delete checkUserExist.isOtpVerified;
-        await checkUserExist.save();
-        return res.send({ status: 1, msg: "loginPin reset successfully" });
+    const { loginPin, confirmLoginPin, mobileNo, userId } = req.body;
 
+    try {
+        const checkUserExist = await user.findById(userId);
+        
+        if (!checkUserExist) {
+            return res.send({ status: 0, msg: "User not found" });
+        }
+        
+        if (checkUserExist.isOtpVerified === 0) {
+            return res.send({ status: 0, msg: "Verify OTP to change pin or mobile" });
+        }
+
+        const updateData = {};
+        if (loginPin && confirmLoginPin) {
+            if (loginPin !== confirmLoginPin) {
+                return res.send({ status: 0, msg: "Pin and confirm pin should be the same" });
+            }
+            
+            const hashedLoginPin = await bcrypt.hash(loginPin, 10);
+            updateData.loginPin = hashedLoginPin; // Add hashed pin to update object
+        }
+        if (mobileNo) {
+            if (!/^\d{10}$/.test(mobileNo)) {  // Ensure mobile is 10 digits
+                return res.send({ status: 0, msg: "Mobile number should be valid" });
+            }
+            updateData.mobileNo = mobileNo; // Add mobile to update object
+        }
+
+        if (Object.keys(updateData).length === 0) {
+            return res.send({ status: 0, msg: "No changes to update" });
+        }
+        await user.updateOne(
+            { _id: userId },
+            { 
+                $set: updateData, 
+                $unset: { isOtpVerified: "" } 
+            }
+        );
+        
+        return res.send({ status: 1, msg: "Login pin and/or mobile updated successfully" });
     } catch (error) {
-        return res.send({ status: 0, msg: error.message })
+        return res.send({ status: 0, msg: error.message });
     }
-}
+};
+
 
 const getUserData = async function (req, res) {
     try {
@@ -334,6 +355,6 @@ export {
     userLogin,
     changePinOrMobile,
     updateUserData,
-    //forgetPassword,
+    forgetPassword,
     deleteUserDetails
 }

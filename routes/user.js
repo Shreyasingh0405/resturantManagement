@@ -12,7 +12,7 @@ export default async (app) => {
         userLogin,
         updateUserData,
         changePinOrMobile,
-        //forgetPassword,
+        forgetPassword,
         deleteUserDetails
     } = await import("../controllers/users.js");
 
@@ -21,18 +21,21 @@ export default async (app) => {
         userValidation,
         userIdValidation,
         loginUserValidation,
-        //forgetPasswordValidation
+        sentOtpValidation,
+        verifyOtpValidation,
+        forgetPasswordValidation,
+        changePinOrMobileValidation
     } = await import("../validations/user.js");
     //=================API================================================//
-    app.post("/userRegistration", userRegistration);
-    app.get('/verifyEmail', verifyEmail);
-    app.post("/sentOtp",sentOtp);
-    app.post("/verifyOTP",verifyOTP);
-    app.post("/changePinOrMobile",changePinOrMobile)
-    app.get("/getUserData", authorized, getUserData);
-    app.post("/getUserDataById", authorized, userIdValidation, getUserDataById);
-    app.post("/userLogin", userLogin);
-    app.post("/updateUserData", authorized, userIdValidation, updateUserData);
-   // app.post("/forgetPassword", forgetPasswordValidation, forgetPassword);
-    app.post("/deleteUserDetails", authorized, userIdValidation, deleteUserDetails);
+    app.post("/v1/v2/userRegistration", userValidation, userRegistration);
+    app.get('/v2/verifyEmail', verifyEmail);
+    app.post("/v2/sentOtp", sentOtpValidation, sentOtp);
+    app.post("/v2/verifyOTP", verifyOtpValidation, verifyOTP);
+    app.post("/v2/changePinOrMobile", changePinOrMobileValidation, changePinOrMobile)
+    app.get("/v1/getUserData", authorized, getUserData);
+    app.post("/v1/getUserDataById", authorized, userIdValidation, getUserDataById);
+    app.post("/v1/v2/userLogin", loginUserValidation, userLogin);
+    app.post("/v1/updateUserData", authorized, userIdValidation, updateUserData);
+    app.post("/v1/forgetPassword", forgetPasswordValidation, forgetPassword);
+    app.post("/v1/deleteUserDetails", authorized, userIdValidation, deleteUserDetails);
 }
