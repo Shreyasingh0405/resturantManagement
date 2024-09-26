@@ -10,5 +10,14 @@ const otpGenerate = () => {
     return otp;
   }
 };
-export default { generateUniqueToken, otpGenerate };
+// rateLimiter.js
+import rateLimit from 'express-rate-limit';
+const logoutLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 5, // Limit each IP to 5 requests per minute
+  message: "Too many logout requests, please try again later."
+});
+
+
+export default { generateUniqueToken, otpGenerate,logoutLimiter };
 

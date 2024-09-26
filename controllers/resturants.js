@@ -29,7 +29,6 @@ const getResturantData = async (req, res) => {
         return res.send({ status: 0, msg: error.message })
     }
 }
-
 const getResturantDataById = async (req, res) => {
     const getResturantById = req.body
     try {
@@ -43,7 +42,6 @@ const getResturantDataById = async (req, res) => {
         return res.send({ status: 0, msg: error.message })
     }
 }
-
 const updateResturantData = async function (req, res) {
     const { resturantId, ...updateData } = req.body
     try {
@@ -67,7 +65,6 @@ const updateResturantData = async function (req, res) {
         return res.send({ status: 0, msg: error.message })
     }
 }
-
 const deleteResturantDetails = async (req, res) => {
     const deleteResturants = req.body
     try {
@@ -91,10 +88,12 @@ const deleteResturantDetails = async (req, res) => {
     }
 }
 
+
 export {
     resturantRegistration,
     getResturantData,
     getResturantDataById,
     updateResturantData,
-    deleteResturantDetails
+    deleteResturantDetails,
+
 }

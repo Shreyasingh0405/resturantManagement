@@ -20,6 +20,10 @@ const resturantSchema = new mongoose.Schema({
         type: Array,
         trim: true
     },
+    cuisines: {
+        type: [String], // e.g., ['Indian', 'Italian', 'Chinese']
+        required: true
+    },
     menu: {
         veg: [
             {

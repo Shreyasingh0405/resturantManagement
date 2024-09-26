@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resend OTP</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        p {
+            color: #555;
+        }
+        .otp {
+            font-weight: bold;
+            color: #007BFF;
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>OTP Resend Notification</h1>
+        <p>Hello <%= name || "User" %>,</p>
+        <p>Your new OTP code is: <span class="otp"><%= otp %></span></p>
+        <p>Please use this OTP to verify your action. The OTP is valid for 10 minutes.</p>
+        <p>Thank you for using our service!</p>
+    </div>
+</body>
+</html>

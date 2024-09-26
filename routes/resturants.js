@@ -9,7 +9,7 @@ export default async (app) => {
         getResturantData,
         getResturantDataById,
         updateResturantData,
-        deleteResturantDetails
+        deleteResturantDetails,
     } = await import("../controllers/resturants.js")
 
     //================validations=========================//
@@ -19,9 +19,9 @@ export default async (app) => {
     } = await import("../validations/resturant.js")
     //=================API================================================//
 
-    app.post("/resturantRegistration", authorized, checkAccess([2, 3]), uploadImage, restaurantValidation, resturantRegistration)
-    app.get("/getResturantData", getResturantData)
-    app.post("/getResturantDataById", resturantIdValidation, getResturantDataById)
-    app.post("/updateResturantData", authorized, checkAccess([2, 3]), resturantIdValidation, updateResturantData)
-    app.post("/deleteResturantDetails", authorized, checkAccess([3]), resturantIdValidation, deleteResturantDetails)
+    app.post("/v1/resturantRegistration",authorized,checkAccess([2,3]), uploadImage, restaurantValidation, resturantRegistration)
+    app.get("/v1/getResturantData", getResturantData)
+    app.post("/v1/getResturantDataById",authorized, resturantIdValidation, getResturantDataById)
+    app.post("/v1/updateResturantData", authorized, checkAccess([2, 3]), resturantIdValidation, updateResturantData)
+    app.post("/v1/deleteResturantDetails", authorized, checkAccess([3]), resturantIdValidation, deleteResturantDetails)
 }

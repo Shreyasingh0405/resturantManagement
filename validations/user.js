@@ -1,4 +1,4 @@
-import { check, validationResult,body } from "express-validator";
+import { check, validationResult, body } from "express-validator";
 
 // User validation
 const userValidation = [
@@ -10,8 +10,9 @@ const userValidation = [
         .notEmpty().withMessage("lastName is required")
         .isString().withMessage("lastName must be a string")
         .trim(),
-    check("mobile")
+    check("mobileNo")
         .notEmpty().withMessage("mobile is required")
+        .isLength({ min: 10, max: 10 }).withMessage('Mobile must be 10 digits')
         .isMobilePhone().withMessage("Invalid mobile number"),
     check("email")
         .notEmpty().withMessage("email is required")
@@ -64,9 +65,22 @@ const userIdValidation = [
 
 const verifyOtpValidation = [
     check("userId")
-        .isMongoId().withMessage("Invalid user ID")
-        .notEmpty().withMessage("userId is required"),
-        check("otp").notEmpty().withMessage("otp is required"),
+        .notEmpty().withMessage("userId is required")
+        .isMongoId().withMessage("Invalid user ID"),
+    check("otp").notEmpty().withMessage("otp is required").isLength({ min: 6, max: 6 }).withMessage('otp must be 6 digits'),
+    (req, res, next) => {
+        const errors = validationResult(req).array();
+        if (errors.length > 0) {
+            return res.send({ status: 0, message: errors[0].msg });
+        }
+        return next();
+    }
+];
+
+const logOutIdValidation = [
+    check("logOutId")
+        .notEmpty().withMessage("logOutId is required")
+        .isMongoId().withMessage("Invalid logOutId"),
     (req, res, next) => {
         const errors = validationResult(req).array();
         if (errors.length > 0) {
@@ -78,16 +92,16 @@ const verifyOtpValidation = [
 
 const loginUserValidation = [
     check('email')
-        .optional() 
+        .optional()
         .isEmail().withMessage('Email is not valid'),
-    check('mobile')
-        .optional()  
-        .isLength({ min: 10, max: 10 }).withMessage('Mobile must be 10 digits'),body().custom((value, { req }) => {
-        if (!req.body.email && !req.body.mobile) {
-            throw new Error('At least one of email or mobile is required');
-        }
-        return true;
-    }),
+    check('mobileNo')
+        .optional()
+        .isLength({ min: 10, max: 10 }).withMessage('Mobile must be 10 digits'), body().custom((value, { req }) => {
+            if (!req.body.email && !req.body.mobileNo) {
+                throw new Error('At least one of email or mobile is required');
+            }
+            return true;
+        }),
     check("loginPin")
         .notEmpty().withMessage("loginPin is required"),
     (req, res, next) => {
@@ -104,16 +118,16 @@ const changePinOrMobileValidation = [
         .isMongoId().withMessage("Invalid user ID")
         .notEmpty().withMessage("userId is required"),
     check('loginPin')
-        .optional() 
+        .optional()
         .isEmail().withMessage('login pin is not valid'),
-    check('mobile')
-        .optional()  
-        .isLength({ min: 10, max: 10 }).withMessage('Mobile must be 10 digits'),body().custom((value, { req }) => {
-        if (!req.body.email && !req.body.mobile) {
-            throw new Error('At least one of login pin  or mobile is required');
-        }
-        return true;
-    }),
+    check('mobileNo')
+        .optional()
+        .isLength({ min: 10, max: 10 }).withMessage('Mobile must be 10 digits'), body().custom((value, { req }) => {
+            if (!req.body.email && !req.body.mobileNo) {
+                throw new Error('At least one of login pin  or mobile is required');
+            }
+            return true;
+        }),
     (req, res, next) => {
         const errors = validationResult(req).array();
         if (errors.length > 0) {
@@ -146,5 +160,6 @@ export {
     forgetPasswordValidation,
     sentOtpValidation,
     verifyOtpValidation,
-    changePinOrMobileValidation
+    changePinOrMobileValidation,
+    logOutIdValidation
 };

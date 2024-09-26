@@ -56,6 +56,17 @@ const userSchema = new mongoose.Schema({
       enum: [0, 1],    //0.no,1.yes
       default: 0
    },
+   locationEnabled: {
+      type: Boolean,
+      default: false   // If true, location detection is enabled
+   },
+   location: {
+      type: {
+         lat: { type: Number },  // Latitude
+         lng: { type: Number },  // Longitude
+      },
+      default: null  // Initially no location is stored
+   },
    status: {
       type: Number,
       enum: [0, 1, 2],

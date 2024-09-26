@@ -1,9 +1,20 @@
 import user from "../models/user.js"
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
+import ejs from "ejs"
+import path from "path"
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
+import geoip from 'geoip-lite';
 import CONFIG from "../config/config.js"
 import sendEmail from "../utils/nodemailer.js"
 import common from "../utils/common.js";
+import session from "../models/session.js"
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+//=============================================Registration======================================//
 
 const userRegistration = async function (req, res) {
     const registeredData = req.body
@@ -24,11 +35,19 @@ const userRegistration = async function (req, res) {
         registeredData.verificationToken = verificationToken;
         const registeredUser = await user.create(registeredData)
         if (registeredUser) {
+
+            const emailTemplatePath = path.join(__dirname, "..", 'views', 'emailVerification.ejs');
+            const verificationLink = `http://localhost:5001/v2/verifyEmail?token=${verificationToken}`;
+            const emailHTML = await ejs.renderFile(emailTemplatePath, {
+                name: registeredData.firstName || "user",
+                verificationLink: verificationLink,
+            });
+
             const mailOptions = {
                 from: CONFIG.SMTP_USER,
                 to: registeredData.email,
                 subject: 'Email Verification',
-                text: `Please verify your email by clicking on this link: /verify-email?token=${verificationToken}`
+                html: emailHTML
             };
             await sendEmail(mailOptions);
             return res.send({ status: 1, msg: "data registered succesfully" })
@@ -40,85 +59,90 @@ const userRegistration = async function (req, res) {
     }
 }
 
+//=====================================VerifyEmail========================================//
+
 const verifyEmail = async (req, res) => {
     const { token } = req.query;
     try {
         const userToVerify = await user.findOne({ verificationToken: token });
         if (!userToVerify) {
-            return res.send({ status: 0, msg: "Invalid token or user not found" });
+            return res.send({ status: 0, msg: "Invalid token or user not found." });
         }
         await user.updateOne(
             { _id: userToVerify._id },
             {
-                $set: { isEmailVerified: 1 }, // Set email as verified
-                $unset: { verificationToken: 1 } // Remove the verificationToken field
+                $set: { isEmailVerified: 1 },
+                $unset: { verificationToken: 1 }
             }
         );
-
-        return res.send({ status: 1, msg: "Email verified successfully!" });
+        const successEmailTemplatePath = path.join(__dirname, "..", 'views', 'registrationSuccess.ejs'); // Ensure you have this template
+        const mailOptions = {
+            from: CONFIG.SMTP_USER,
+            to: userToVerify.email,
+            subject: 'Registration Successful',
+            html: await ejs.renderFile(successEmailTemplatePath, {
+                name: userToVerify.firstName || "User",
+            }),
+        };
+        await sendEmail(mailOptions);
+        return res.send({ status: 1, msg: "Email verified successfully! A confirmation email has been sent." });
     } catch (error) {
         return res.send({ status: 0, msg: error.message });
     }
 };
+
+//============================================Login==================================================================//
 
 const userLogin = async (req, res) => {
-    const { email, loginPin, mobile } = req.body;
-
-    try {
-        const userQuery = email ? { email } : { mobile };
+    const { email, loginPin, mobileNo } = req.body;
+try {
+        const userQuery = email ? { email } : { mobileNo };
         const userData = await user.findOne(userQuery);
-
         if (!userData) {
-            return res.send({ status: 0, msg: "You are not registered" });
+            return res.status(404).send({ status: 0, msg: "You are not registered" });
         }
-
-        // Check if the account is active
         if (userData.status === 0) {
-            return res.send({ status: 0, msg: "Something went wrong" });
+            return res.status(403).send({ status: 0, msg: "Something went wrong" });
         }
-
-        // Ensure the email is verified (if logging in by email)
         if (email && userData.isEmailVerified === 0) {
-            return res.send({ status: 0, msg: "Please verify your email for login" });
+            return res.status(403).send({ status: 0, msg: "Please verify your email for login" });
         }
-
-        // Compare login pin
-        bcrypt.compare(loginPin, userData.loginPin, function (err, result) {
-            if (result === true) {
-                const token = jwt.sign(
-                    {
-                        userId: userData._id,
-                        email: userData.email,
-                        role: userData.role,
-                    },
-                    CONFIG.JWT_KEY,
-                    { algorithm: "RS256", expiresIn: "1d" }
-                );
-
-                if (token) {
-                    return res.send({
-                        status: 1,
-                        msg: "Login successfully",
-                        data: token,
-                    });
-                }
-            } else if (err) {
-                return res.send({
-                    status: 0,
-                    msg: "Invalid username or password",
-                });
-            }
-
-            return res.send({
-                status: 0,
-                msg: "Invalid username or password",
-            });
+        const isMatch = await bcrypt.compare(loginPin, userData.loginPin);
+        if (!isMatch) {
+            return res.status(401).send({ status: 0, msg: "Invalid username or password" });
+        }
+        const token = jwt.sign(
+            {
+                userId: userData._id,
+                email: userData.email,
+                role: userData.role,
+            },
+            CONFIG.JWT_KEY,
+            { algorithm: "RS256", expiresIn: "1d" }
+        );
+        const newSession = new session({
+            userId: userData._id,
+            deviceId: req.headers['user-agent'], // Capture device info
+            token: token,
+            lastActive: new Date(),
+            createdAt: new Date(),
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // Set expiration to 1 day from now
+            status: 'active', // Track if the session is active
         });
+        await newSession.save();
+ return res.status(200).send({
+            status: 1,
+            msg: "Login successfully",
+            data: token,
+        });
+
     } catch (error) {
-        return res.send({ status: 0, msg: error.message });
+        console.error("Login error:", error); // Log the error
+        return res.status(500).send({ status: 0, msg: error.message });
     }
 };
 
+/// ====================forget password in v1===============//
 
 const forgetPassword = async (req, res) => {
     const { email, password, confirmPassword, userId } = req.body
@@ -146,6 +170,8 @@ const forgetPassword = async (req, res) => {
     }
 }
 
+//=====================otp sent for pin change==============================//
+
 const sentOtp = async (req, res) => {
     try {
         const { email } = req.body;
@@ -160,11 +186,16 @@ const sentOtp = async (req, res) => {
             { otp, otpExpiration: expirationTime }
         );
         if (otpSent) {
+            const emailTemplatePath = path.join(__dirname, '..', 'views', 'otpEmail.ejs');
+            const emailHTML = await ejs.renderFile(emailTemplatePath, {
+                name: userData.firstName,
+                otp: otp,
+            });
             const mailOptions = {
                 from: CONFIG.SMTP_USER,
                 to: email,
-                subject: "OTP Sent",
-                text: "otp sent ",
+                subject: "OTP for Change Pin",
+                html: emailHTML,
             };
             await sendEmail(mailOptions);
             return res.send({
@@ -181,6 +212,8 @@ const sentOtp = async (req, res) => {
         return res.send({ status: 0, message: error.message });
     }
 };
+
+//===========================================verify Otp for change loginPin============================//
 
 const verifyOTP = async (req, res) => {
     try {
@@ -202,11 +235,15 @@ const verifyOTP = async (req, res) => {
                 }
             );
             if (updateResult.modifiedCount > 0) {
+                const emailTemplatePath = path.join(__dirname, '..', 'views', 'otpVerificationEmail.ejs');
+                const emailHTML = await ejs.renderFile(emailTemplatePath, {
+                    name: otpVerification.firstName,
+                });
                 const mailOptions = {
                     from: CONFIG.SMTP_USER,
                     to: otpVerification.email,
-                    subject: "OTP Verification",
-                    text: "verifyotp",
+                    subject: "OTP Verification Successful",
+                    html: emailHTML,
                 };
                 await sendEmail(mailOptions);
                 return res.send({
@@ -223,53 +260,87 @@ const verifyOTP = async (req, res) => {
         return res.send({ status: 0, msg: error.message });
     }
 };
+
+// ============================================================Resend otp====================================================================//
+
+const resendOtp = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const userData = await user.findOne({ email });
+        if (!userData) {
+            return res.send({ status: 0, msg: "User not found" });
+        }
+        const otp = common.otpGenerate();
+        const expirationTime = new Date(Date.now() + 10 * 60 * 1000); // OTP valid for 10 minutes
+        await user.findOneAndUpdate(
+            { email },
+            { otp, otpExpiration: expirationTime }
+        );
+        const emailTemplatePath = path.join(__dirname, '..', 'views', 'otpResendEmail.ejs');
+        const emailHTML = await ejs.renderFile(emailTemplatePath, {
+            name: userData.firstName || "User",
+            otp: otp,
+        });
+        const mailOptions = {
+            from: CONFIG.SMTP_USER,
+            to: email,
+            subject: "Your OTP Code",
+            html: emailHTML,
+        };
+        await sendEmail(mailOptions);
+        return res.send({
+            status: 1,
+            message: "OTP resent successfully to your email",
+        });
+    } catch (error) {
+        return res.send({ status: 0, message: error.message });
+    }
+};
+
+//======================================================changelogin pin or Mobile =====================================================//
+
 const changePinOrMobile = async (req, res) => {
     const { loginPin, confirmLoginPin, mobileNo, userId } = req.body;
-
     try {
         const checkUserExist = await user.findById(userId);
-        
         if (!checkUserExist) {
             return res.send({ status: 0, msg: "User not found" });
         }
-        
         if (checkUserExist.isOtpVerified === 0) {
             return res.send({ status: 0, msg: "Verify OTP to change pin or mobile" });
         }
-
         const updateData = {};
         if (loginPin && confirmLoginPin) {
             if (loginPin !== confirmLoginPin) {
                 return res.send({ status: 0, msg: "Pin and confirm pin should be the same" });
             }
-            
             const hashedLoginPin = await bcrypt.hash(loginPin, 10);
-            updateData.loginPin = hashedLoginPin; // Add hashed pin to update object
+            updateData.loginPin = hashedLoginPin;
         }
         if (mobileNo) {
-            if (!/^\d{10}$/.test(mobileNo)) {  // Ensure mobile is 10 digits
+            if (!/^\d{10}$/.test(mobileNo)) {
                 return res.send({ status: 0, msg: "Mobile number should be valid" });
             }
-            updateData.mobileNo = mobileNo; // Add mobile to update object
+            updateData.mobileNo = mobileNo;
         }
-
         if (Object.keys(updateData).length === 0) {
             return res.send({ status: 0, msg: "No changes to update" });
         }
         await user.updateOne(
             { _id: userId },
-            { 
-                $set: updateData, 
-                $unset: { isOtpVerified: "" } 
+            {
+                $set: updateData,
+                $unset: { isOtpVerified: "" }
             }
         );
-        
+
         return res.send({ status: 1, msg: "Login pin and/or mobile updated successfully" });
     } catch (error) {
         return res.send({ status: 0, msg: error.message });
     }
 };
 
+//====================================================getUserData=================================================//
 
 const getUserData = async function (req, res) {
     try {
@@ -283,6 +354,8 @@ const getUserData = async function (req, res) {
         return res.send({ status: 0, msg: error.message })
     }
 }
+
+//===================================================getUserDataById===================================================//
 
 const getUserDataById = async function (req, res) {
     const getUserById = req.body
@@ -298,6 +371,8 @@ const getUserDataById = async function (req, res) {
     }
 }
 
+//================================================== Update User Data =================================================//
+
 const updateUserData = async function (req, res) {
     const { userId, ...updateData } = req.body
     try {
@@ -305,11 +380,9 @@ const updateUserData = async function (req, res) {
         if (!userExist) {
             return res.send({ status: 0, msg: "User not found" });
         }
-
         if (userExist.status === 0) {
             return res.send({ status: 0, msg: "something went wrong" });
         }
-
         const updateUser = await user.findByIdAndUpdate(
             userId,
             updateData,
@@ -322,6 +395,8 @@ const updateUserData = async function (req, res) {
         return res.send({ status: 0, msg: error.message })
     }
 }
+
+//================================================== Delete User Data ==================================================//
 
 const deleteUserDetails = async (req, res) => {
     const deleteUsers = req.body
@@ -345,10 +420,96 @@ const deleteUserDetails = async (req, res) => {
         return res.send({ status: 0, msg: error.message })
     }
 }
+
+//===================================Enable location=========================//
+
+const enableLocation = async (req, res) => {
+    try {
+        const { userId, location } = req.body;  // Expecting userId and location in the body
+        const userLocation = await user.findById(userId);
+
+        if (!userLocation) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Check if location was provided in the request body
+        if (location && location.lat && location.lng) {
+            userLocation.location = location; // Use the provided location
+        } else {
+            const ip = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+            console.log("IP Address:", ip);
+
+            if (ip === '::1' || ip === '127.0.0.1') {
+                console.log('Running on localhost; skipping geo lookup.');
+                return res.status(400).json({ message: 'Running on localhost; please provide location manually.' });
+            }
+
+            const geo = geoip.lookup(ip);
+            console.log("Geolocation Data:", geo);
+
+            if (!geo || !geo.ll) {
+                console.log('Geo lookup failed or returned no location data.');
+                return res.status(400).json({ message: 'Could not determine location.' });
+            }
+
+            userLocation.location = {
+                lat: geo.ll[0],
+                lng: geo.ll[1]
+            };
+        }
+
+        userLocation.locationEnabled = true;
+        await userLocation.save();
+
+        res.json({
+            message: 'Location enabled and detected',
+            location: userLocation.location
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Error enabling location", error: error.message });
+    }
+};
+
+//===============================================logout=========================================================//
+
+const logOut = async (req, res) => {
+    try {
+        const { logOutId, logoutAll } = req.body; 
+        if (!logOutId) {
+            return res.status(400).send({ status: 0, msg: "logOutId must be provided" });
+        }
+        if (logoutAll) {
+            const result = await session.updateMany({ _id: logOutId }, { isActive: false });
+            if (result.modifiedCount === 0) {
+                return res.status(404).send({ status: 0, msg: "No active sessions found for this user" });
+            }
+            await session.deleteMany({ userId: logOutId });
+            
+            return res.status(200).send({ status: 1, msg: "Logged out from all devices and sessions deleted" });
+        } else {
+            const sessionData = await session.findOneAndUpdate(
+                { _id: logOutId, isActive: true },
+                { isActive: false }
+            );
+            if (!sessionData) {
+                return res.status(404).send({ status: 0, msg: "No active session found for this user on this device" });
+            }
+            await session.deleteOne({ _id: logOutId });
+
+            return res.status(200).send({ status: 1, msg: "Logged out from this device and session deleted" });
+        }
+    } catch (error) {
+        return res.status(500).send({ status: 0, msg: error.message });
+    }
+};
+
+
 export {
     userRegistration,
     verifyEmail,
     sentOtp,
+    logOut,
+    resendOtp,
     verifyOTP,
     getUserData,
     getUserDataById,
@@ -356,5 +517,6 @@ export {
     changePinOrMobile,
     updateUserData,
     forgetPassword,
-    deleteUserDetails
+    deleteUserDetails,
+    enableLocation
 }
